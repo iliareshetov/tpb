@@ -5,6 +5,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRe
 import datetime
 import calendar
 
+from telegram.ext import ConversationHandler
+
 from services import fetch_all_bookings_for_user, insert_booking
 
 tz = pytz.timezone('Europe/Helsinki')
@@ -36,6 +38,7 @@ def inline_handler(update, context):
         context.bot.send_message(chat_id=update.callback_query.from_user.id,
                                  text="You selected %s" % (date.strftime("%d.%m.%Y, %H:%M")),
                                  reply_markup=ReplyKeyboardRemove())
+        ConversationHandler.END
 
 
 def create_callback_data(action, year, month, day):

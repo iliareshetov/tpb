@@ -7,6 +7,6 @@ __author__ = 'Ilia Reshetov, Emil Khaibrakhmanov'
 
 from services.booking_service import insert_booking, fetch_all_bookings_for_user
 from services.initdb import create_tables
-from services.user_service import register_user
+from services.user_service import register_user, get_all_users
 
 __all__ = ('insert_booking', 'create_tables', 'fetch_all_bookings_for_user', 'register_user')

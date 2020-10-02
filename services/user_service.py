@@ -43,3 +43,29 @@ def register_user(user_id, first_name, is_bot, language_code):
             conn.close()
 
     return inserted_id
+
+
+def get_all_users():
+    # SQL to get records from Postgres
+    sql = "SELECT first_name FROM users"
+    conn = None
+
+    try:
+        # connect to the PostgreSQL database
+        conn = psycopg2.connect(
+            host=DATABASE_HOST,
+            database=DATABASE,
+            user=USER,
+            password=PASSWORD)
+
+        cur = conn.cursor()
+        cur.execute(sql)
+        list_users = cur.fetchall()
+        cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        logging.error(error)
+    finally:
+        if conn is not None:
+            conn.close()
+
+    return list_users

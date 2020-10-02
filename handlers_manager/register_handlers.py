@@ -1,153 +1,46 @@
 import os
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
+from telegram import ReplyKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackQueryHandler
 import logging
 
-from booking_system import inline_handler, get_users_bookings, calendar_handler
+from booking_system import FIRST, inline_handler
+from booking_system.state_manager import handle_calendar_selection, SECOND
 from config import TELEGRAM_KEY
-from services import create_tables, register_user
+from services import create_tables, register_user, get_all_users
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Stages
-FIRST, SECOND = range(2)
-# Callback data
-ONE, TWO, THREE, FOUR = range(4)
-
-
-# def start(update, context):
-#     menu = '/newbooking - забронировать время в сервисе \n' \
-#            '/showhistory - посмотреть историю бронирований';
-#     context.bot.send_message(chat_id=update.effective_chat.id, text=menu)
-#     user = update.message.from_user
-#
-#     logging.info(f'Start : {update}')
-#     logging.info(f'Start will register new user: {user}')
-#
-#     inserted_id = register_user(user.id, user.first_name, user.is_bot, user.language_code)
-#     logging.info(f'Start inserted user with id: {inserted_id}')
 
 def start(update, context):
-    """Send message on `/start`."""
-    # Get user that sent /start and log his name
     user = update.message.from_user
     logger.info("User %s started the conversation.", user.first_name)
-    # Build InlineKeyboard where each button has a displayed text
-    # and a string as callback_data
-    # The keyboard is a list of button rows, where each row is in turn
-    # a list (hence `[[...]]`).
-    keyboard = [
-        [InlineKeyboardButton("1", callback_data=str(ONE)),
-         InlineKeyboardButton("2", callback_data=str(TWO))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    # Send message with text and appended InlineKeyboard
+
+    logging.info(f'Start will register new user: {user}')
+
+    # inserted_id = register_user(user.id, user.first_name, user.is_bot, user.language_code)
+    # logging.info(f'Start inserted user with id: {inserted_id}')
+
+    list_users = get_all_users()
+    logging.info(f'Fetch all users: {list_users}')
+
+    menu_keyboard = list_users
+    menu_markup = ReplyKeyboardMarkup(menu_keyboard, one_time_keyboard=False, resize_keyboard=True)
+
     update.message.reply_text(
-        "Start handler, Choose a route",
-        reply_markup=reply_markup
+        "Choose a user",
+        reply_markup=menu_markup
     )
     # Tell ConversationHandler that we're in state `FIRST` now
     return FIRST
 
 
-def start_over(update, context):
-    """Prompt same text & keyboard as `start` does but not as new message"""
-    # Get CallbackQuery from Update
-    query = update.callback_query
-    # CallbackQueries need to be answered, even if no notification to the user is needed
-    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
-    query.answer()
-    keyboard = [
-        [InlineKeyboardButton("1", callback_data=str(ONE)),
-         InlineKeyboardButton("2", callback_data=str(TWO))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    # Instead of sending a new message, edit the message that
-    # originated the CallbackQuery. This gives the feeling of an
-    # interactive menu.
-    query.edit_message_text(
-        text="Start handler, Choose a route",
-        reply_markup=reply_markup
-    )
-    return FIRST
+def echo(update, context):
+    logging.info(f'echo update: {update}, context: {context}')
+    update.message.reply_text(update.message.text)
 
 
-def one(update, context):
-    """Show new choice of buttons"""
-    query = update.callback_query
-    query.answer()
-    keyboard = [
-        [InlineKeyboardButton("3", callback_data=str(THREE)),
-         InlineKeyboardButton("4", callback_data=str(FOUR))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    query.edit_message_text(
-        text="First CallbackQueryHandler, Choose a route",
-        reply_markup=reply_markup
-    )
-    return FIRST
-
-
-def two(update, context):
-    """Show new choice of buttons"""
-    query = update.callback_query
-    query.answer()
-    keyboard = [
-        [InlineKeyboardButton("1", callback_data=str(ONE)),
-         InlineKeyboardButton("3", callback_data=str(THREE))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    query.edit_message_text(
-        text="Second CallbackQueryHandler, Choose a route",
-        reply_markup=reply_markup
-    )
-    return FIRST
-
-
-def three(update, context):
-    """Show new choice of buttons"""
-    query = update.callback_query
-    query.answer()
-    keyboard = [
-        [InlineKeyboardButton("Yes, let's do it again!", callback_data=str(ONE)),
-         InlineKeyboardButton("Nah, I've had enough ...", callback_data=str(TWO))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    query.edit_message_text(
-        text="Third CallbackQueryHandler. Do want to start over?",
-        reply_markup=reply_markup
-    )
-    # Transfer to conversation state `SECOND`
-    return SECOND
-
-
-def four(update, context):
-    """Show new choice of buttons"""
-    query = update.callback_query
-    query.answer()
-    keyboard = [
-        [InlineKeyboardButton("2", callback_data=str(TWO)),
-         InlineKeyboardButton("4", callback_data=str(FOUR))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    query.edit_message_text(
-        text="Fourth CallbackQueryHandler, Choose a route",
-        reply_markup=reply_markup
-    )
-    return FIRST
-
-
-def end(update, context):
-    """Returns `ConversationHandler.END`, which tells the
-    ConversationHandler that the conversation is over"""
-    query = update.callback_query
-    query.answer()
-    query.edit_message_text(
-        text="See you next time!"
-    )
-    return ConversationHandler.END
 def main():
     create_tables()
 
@@ -162,33 +55,15 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            FIRST: [CallbackQueryHandler(one, pattern='^' + str(ONE) + '$'),
-                    CallbackQueryHandler(two, pattern='^' + str(TWO) + '$'),
-                    CallbackQueryHandler(three, pattern='^' + str(THREE) + '$'),
-                    CallbackQueryHandler(four, pattern='^' + str(FOUR) + '$')],
-            SECOND: [CallbackQueryHandler(start_over, pattern='^' + str(ONE) + '$'),
-                     CallbackQueryHandler(end, pattern='^' + str(TWO) + '$')]
+            FIRST: [MessageHandler(Filters.text & (~Filters.command), handle_calendar_selection)],
+            SECOND: [MessageHandler(Filters.text & (~Filters.command), handle_calendar_selection)],
         },
         fallbacks=[CommandHandler('start', start)],
-        per_message=True,
     )
 
-    # add handlers
-    # start_handler = CommandHandler('start', start)
-    # updater.dispatcher.add_handler(start_handler)
-    #
-    # echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
-    # updater.dispatcher.add_handler(echo_handler)
-    #
-    # new_booking_handler = CommandHandler('newbooking', calendar_handler)
-    # updater.dispatcher.add_handler(new_booking_handler)
-    #
-    # show_history_handler = CommandHandler('showhistory', get_users_bookings)
-    # updater.dispatcher.add_handler(show_history_handler)
-    #
-    # updater.dispatcher.add_handler(CallbackQueryHandler(inline_handler))
-
     updater.dispatcher.add_handler(conv_handler)
+
+    updater.dispatcher.add_handler(CallbackQueryHandler(inline_handler))
 
     port = int(os.environ.get('PORT', '8443'))
 

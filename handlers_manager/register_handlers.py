@@ -3,16 +3,18 @@ import os
 import requests
 import datetime
 import json
-from scheduler import book_timeslot
 import re
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 # from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 # from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
 # import logging
 
 # from booking_system import inline_handler, get_users_bookings, calendar_handler
 from config import TELEGRAM_KEY
+
+
 # from services import create_tables, register_user
-#
+
 # logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 # logger = logging.getLogger(__name__)
 
@@ -163,6 +165,7 @@ def check_email(email):
 #     )
 #     return ConversationHandler.END
 # def main():
+
 def getLastMessage():
     url = "https://api.telegram.org/bot{}/getUpdates".format(TELEGRAM_KEY)
     response = requests.get(url)
@@ -190,9 +193,9 @@ def sendMessage(chat_id, text_message):
     return response
 
 def sendInlineMessageForService(chat_id):
-    text_message = 'zdarova loh'
+    text_message = 'choose service'
     keyboard = {'keyboard': [
-        [{'text': 'strizhka'}, {'text': 'huizhka'}],
+        [{'text': 'strizhka'}, {'text': 'nogti'}],
         [{'text': 'kocherizhka'}, {'text': 'yahzesheche'}]
     ]}
     key = json.JSONEncoder().encode(keyboard)
@@ -200,6 +203,32 @@ def sendInlineMessageForService(chat_id):
         text_message) + '&reply_markup=' + key
     response = requests.get(url)
     return response
+
+def sendInlineMessageForMasterForStrizhka(chat_id):
+    text_message = 'choose master for strizhka'
+    keyboard = {'keyboard': [
+        [{'text': 'jakie chan'}, {'text': 'papich'}],
+        [{'text': 'postrigatel228'}, {'text': 'krutoi'}]
+    ]}
+    key = json.JSONEncoder().encode(keyboard)
+    url = 'https://api.telegram.org/bot' + str(TELEGRAM_KEY) + '/sendmessage?chat_id=' + str(chat_id) + '&text=' + str(
+        text_message) + '&reply_markup=' + key
+    response = requests.get(url)
+    return response
+
+def sendInlineMessageForMasterForNogti(chat_id):
+    text_message = 'choose master for nogti'
+    keyboard = {'keyboard': [
+        [{'text': 'nogtevoi tsar'}, {'text': 'nogtevoi loh'}],
+        [{'text': 'patsan'}, {'text': 'muzhik'}]
+    ]}
+    key = json.JSONEncoder().encode(keyboard)
+    url = 'https://api.telegram.org/bot' + str(TELEGRAM_KEY) + '/sendmessage?chat_id=' + str(chat_id) + '&text=' + str(
+        text_message) + '&reply_markup=' + key
+    response = requests.get(url)
+    return response
+
+
 
 def sendInlineMessageForBookingTime(chat_id):
     text_message = 'Please choose a time slot...'
@@ -234,7 +263,10 @@ def sendInlineMessageForBookingTime(chat_id):
         ]}
     elif 16 <= int(current_hour) < 24:
         keyboard = {'keyboard': [
-            [{'text': '19:00'}],
+            [{'text': '19:00'}, {'text': '19:30'}],
+            [{'text': '20:00'}, {'text': '20:30'}],
+            [{'text': '21:00'}, {'text': '21:30'}],
+            [{'text': '22:00'}, {'text': '22:30'}],
         ]}
     else:
         return sendMessage(chat_id, 'poprobui snova ili idi nahui')
@@ -256,15 +288,24 @@ def main():
         else:
             if current_last_msg == '/start':
                 sendInlineMessageForService(chat_id)
-            if current_last_msg in ['Cut', 'strizhka', 'huizhka', 'otrizhka']:
+            if current_last_msg in ['strizhka', 'huizhka', 'otrizhka']:
+                event_description = current_last_msg
+                sendInlineMessageForMasterForStrizhka(chat_id)
+            if current_last_msg in ['nogti']:
+                event_description = current_last_msg
+                sendInlineMessageForMasterForNogti(chat_id)
+            if current_last_msg in ['papich', 'jakie chan']:
                 event_description = current_last_msg
                 sendInlineMessageForBookingTime(chat_id)
-            if current_last_msg in ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']:
+            if current_last_msg in ['nogtevoi loh', 'nogtevoi tsar']:
+                event_description = current_last_msg
+                sendInlineMessageForBookingTime(chat_id)
+            if current_last_msg in ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '19:00', '20:30', '21:00', '21:30', '22:00']:
                 booking_time = current_last_msg
                 update_id_for_booking_of_time_slot = current_update_id
                 sendMessage(chat_id, "Please enter email address:")
             if current_last_msg == '/cancel':
-                sendMessage(chat_id, "Please try another timeslot and try again tomorrow")
+                sendMessage(chat_id, "Please enter /email")
                 break
                     # return
                 continue
@@ -287,6 +328,7 @@ def main():
 
         prev_last_msg = current_last_msg
         prev_update_id = current_update_id
+
 
 # def main():
 
